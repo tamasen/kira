@@ -5,26 +5,14 @@ const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
 // =====================
-// screen size
-// =====================
-let screenWidth = 0;
-let screenHeight = 0;
-
-// =====================
 // resize
 // =====================
 function resizeCanvas() {
   const dpr = window.devicePixelRatio || 1;
-
-  screenWidth  = window.innerWidth;
-  screenHeight = window.innerHeight;
-
-  canvas.width  = screenWidth  * dpr;
-  canvas.height = screenHeight * dpr;
-
-  canvas.style.width  = screenWidth + "px";
-  canvas.style.height = screenHeight + "px";
-
+  canvas.width  = window.innerWidth  * dpr;
+  canvas.height = window.innerHeight * dpr;
+  canvas.style.width  = window.innerWidth + "px";
+  canvas.style.height = window.innerHeight + "px";
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 resizeCanvas();
@@ -49,45 +37,55 @@ const STATE = {
 let gameState = STATE.TITLE;
 
 // =====================
-// objects
+// state
 // =====================
 const SIZE = 100;
 
-const player = {
-  x: 0,
-  y: 0,
-  speed: 4
-};
+const player = { x: 0, y: 0, speed: 4 };
+const enemy  = { x: 0, y: 0, speed: 1.8 };
 
-const enemy = {
-  x: 0,
-  y: 0,
-  baseSpeed: 1.8,
-  speed: 1.8
-};
-
-// =====================
-// score & level
-// =====================
 let startTime = 0;
 let surviveTime = 0;
 let level = 1;
 
 // =====================
-// input
+// keyboard input
 // =====================
 const keys = {};
 window.addEventListener("keydown", e => {
   if (e.key.startsWith("Arrow")) e.preventDefault();
   keys[e.key] = true;
 
-  if (e.key === "Enter" && gameState !== STATE.PLAY) {
+  if (e.key === "Enter" && (gameState !== STATE.PLAY)) {
     startGame();
   }
 });
-window.addEventListener("keyup", e => {
-  if (e.key.startsWith("Arrow")) e.preventDefault();
-  keys[e.key] = false;
+window.addEventListener("keyup", e => keys[e.key] = false);
+
+// =====================
+// touch input
+// =====================
+let touchActive = false;
+let touchX = 0;
+let touchY = 0;
+
+canvas.addEventListener("touchstart", e => {
+  e.preventDefault();
+  touchActive = true;
+  const t = e.touches[0];
+  touchX = t.clientX;
+  touchY = t.clientY;
+});
+
+canvas.addEventListener("touchmove", e => {
+  e.preventDefault();
+  const t = e.touches[0];
+  touchX = t.clientX;
+  touchY = t.clientY;
+});
+
+canvas.addEventListener("touchend", () => {
+  touchActive = false;
 });
 
 canvas.addEventListener("click", () => {
@@ -115,17 +113,13 @@ function isHit(a, b) {
 // =====================
 function startGame() {
   gameState = STATE.PLAY;
-
-  player.x = screenWidth / 2 - SIZE / 2;
-  player.y = screenHeight / 2 - SIZE / 2;
-
-  enemy.x = screenWidth / 4;
-  enemy.y = screenHeight / 4;
-
-  enemy.speed = enemy.baseSpeed;
-  startTime = performance.now();
-  surviveTime = 0;
+  player.x = canvas.width / 2 - SIZE / 2;
+  player.y = canvas.height / 2 - SIZE / 2;
+  enemy.x  = canvas.width / 4;
+  enemy.y  = canvas.height / 4;
+  enemy.speed = 1.8;
   level = 1;
+  startTime = performance.now();
 }
 
 // =====================
@@ -137,21 +131,24 @@ function updatePlayer() {
   if (keys["ArrowLeft"])  player.x -= player.speed;
   if (keys["ArrowRight"]) player.x += player.speed;
 
-  player.x = clamp(player.x, 0, screenWidth  - SIZE);
-  player.y = clamp(player.y, 0, screenHeight - SIZE);
+  if (touchActive) {
+    const dx = touchX - (player.x + SIZE / 2);
+    const dy = touchY - (player.y + SIZE / 2);
+    const dist = Math.hypot(dx, dy);
+    if (dist > 5) {
+      player.x += (dx / dist) * player.speed;
+      player.y += (dy / dist) * player.speed;
+    }
+  }
+
+  player.x = clamp(player.x, 0, canvas.width  - SIZE);
+  player.y = clamp(player.y, 0, canvas.height - SIZE);
 }
 
 function updateEnemy() {
-  surviveTime = Math.floor((performance.now() - startTime) / 1000);
-
-  // ★ レベル計算（5秒ごと）
-  level = Math.floor(surviveTime / 5) + 1;
-  enemy.speed = enemy.baseSpeed + level * 0.3;
-
   const dx = player.x - enemy.x;
   const dy = player.y - enemy.y;
   const dist = Math.hypot(dx, dy);
-
   if (dist > 0) {
     enemy.x += (dx / dist) * enemy.speed;
     enemy.y += (dy / dist) * enemy.speed;
@@ -162,44 +159,37 @@ function updateEnemy() {
 // draw
 // =====================
 function drawTitle() {
-  ctx.clearRect(0, 0, screenWidth, screenHeight);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = "#000";
   ctx.textAlign = "center";
-
   ctx.font = "48px sans-serif";
-  ctx.fillText("林を作らないゲーム", screenWidth / 2, screenHeight / 2 - 120);
-
+  ctx.fillText("林を作らないゲーム", canvas.width / 2, canvas.height / 2 - 80);
   ctx.font = "24px sans-serif";
-  ctx.fillText("クリック or Enterでスタート", screenWidth / 2, screenHeight / 2 + 40);
+  ctx.fillText("クリック or Enter でスタート", canvas.width / 2, canvas.height / 2 + 40);
 }
 
 function drawGame() {
-  ctx.clearRect(0, 0, screenWidth, screenHeight);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   ctx.drawImage(playerImg, player.x, player.y, SIZE, SIZE);
   ctx.drawImage(enemyImg, enemy.x, enemy.y, SIZE, SIZE);
 
   ctx.fillStyle = "#000";
-  ctx.font = "20px sans-serif";
   ctx.textAlign = "left";
-  ctx.fillText(`TIME: ${surviveTime}s`, 20, 30);
-  ctx.fillText(`LEVEL: ${level}`, 20, 55);
+  ctx.font = "20px sans-serif";
+  ctx.fillText(`TIME : ${surviveTime.toFixed(1)}`, 20, 40);
+  ctx.fillText(`LEVEL : ${level}`, 20, 70);
 }
 
 function drawGameOver() {
-  ctx.clearRect(0, 0, screenWidth, screenHeight);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = "#000";
   ctx.textAlign = "center";
-
   ctx.font = "48px sans-serif";
-  ctx.fillText("林", screenWidth / 2, screenHeight / 2 - 120);
-
-  ctx.font = "28px sans-serif";
-  ctx.fillText(`生存時間: ${surviveTime} 秒`, screenWidth / 2, screenHeight / 2 - 20);
-  ctx.fillText(`到達レベル: ${level}`, screenWidth / 2, screenHeight / 2 + 20);
-
+  ctx.fillText("林", canvas.width / 2, canvas.height / 2 - 80);
   ctx.font = "24px sans-serif";
-  ctx.fillText("クリック or Enterで再スタート", screenWidth / 2, screenHeight / 2 + 80);
+  ctx.fillText(`生存時間 : ${surviveTime.toFixed(1)} 秒`, canvas.width / 2, canvas.height / 2);
+  ctx.fillText("クリック or Enter で再スタート", canvas.width / 2, canvas.height / 2 + 60);
 }
 
 // =====================
@@ -209,7 +199,12 @@ function gameLoop() {
   if (gameState === STATE.TITLE) {
     drawTitle();
   }
-  else if (gameState === STATE.PLAY) {
+
+  if (gameState === STATE.PLAY) {
+    surviveTime = (performance.now() - startTime) / 1000;
+    level = Math.floor(surviveTime / 10) + 1;
+    enemy.speed = 1.8 + level * 0.3;
+
     updatePlayer();
     updateEnemy();
     drawGame();
@@ -218,11 +213,24 @@ function gameLoop() {
       gameState = STATE.GAMEOVER;
     }
   }
-  else {
+
+  if (gameState === STATE.GAMEOVER) {
     drawGameOver();
   }
 
   requestAnimationFrame(gameLoop);
 }
 
-playerImg.onload = gameLoop;
+// =====================
+// start safely
+// =====================
+let started = false;
+function safeStart() {
+  if (!started) {
+    started = true;
+    gameLoop();
+  }
+}
+playerImg.onload = safeStart;
+enemyImg.onload  = safeStart;
+setTimeout(safeStart, 500);
