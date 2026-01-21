@@ -178,7 +178,7 @@ function drawGameOver() {
   ctx.textAlign = "center";
 
   ctx.font = "48px sans-serif";
-  ctx.fillText("ゲームオーバー", screenWidth / 2, screenHeight / 2 - 60);
+  ctx.fillText("林", screenWidth / 2, screenHeight / 2 - 60);
 
   ctx.font = "24px sans-serif";
   ctx.fillText("画面タップで再スタート", screenWidth / 2, screenHeight / 2 + 40);
