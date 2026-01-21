@@ -220,7 +220,7 @@ function drawGameOver() {
   ctx.fillStyle = "#000";
   ctx.textAlign = "center";
   ctx.font = "48px sans-serif";
-  ctx.fillText("ゲームオーバー", screenWidth / 2, screenHeight / 2 - 80);
+  ctx.fillText("林", screenWidth / 2, screenHeight / 2 - 80);
   ctx.font = "24px sans-serif";
   ctx.fillText(`生存時間: ${surviveTime} 秒`, screenWidth / 2, screenHeight / 2 - 20);
   ctx.fillText("画面タップで再スタート", screenWidth / 2, screenHeight / 2 + 40);
