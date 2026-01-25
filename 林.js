@@ -173,7 +173,7 @@ function start(){
     enemies.push({x:W-80,y:0,size:70,speed:2.5,img:img.enemy});
   }
   if(MODES[modeIndex]==="森（一騎当千）"){
-    player.speed=1;
+    player.speed=4;
     level=999;
     enemies.push({x:0,y:0,size:100,speed:0,img:img.boss});
   }
