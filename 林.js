@@ -222,11 +222,11 @@ function update(){
   // 四面楚歌 敵追加
   if(MODES[modeIndex]==="森（四面楚歌）"){
     const now=performance.now();
-    if(now-lastEnemyAddTime>3000 && enemies.length<10){
+    if(now-lastEnemyAddTime>5000 && enemies.length<10){
       enemies.push({
         x:Math.random()*(screenWidth-SIZE),
         y:Math.random()*(screenHeight-SIZE),
-        speed:2.5,
+        speed:2.0,
         img:enemyImg
       });
       lastEnemyAddTime=now;
