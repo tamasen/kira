@@ -79,12 +79,6 @@ addEventListener("keyup",e=>keys[e.key]=false);
 canvas.addEventListener("click",e=>click(e.clientX,e.clientY));
 canvas.addEventListener("touchstart",e=>{
   e.preventDefault();
-  touching=true;
-  tx=e.touches[0].clientX;
-  ty=e.touches[0].clientY;
-},{passive:false});
-canvas.addEventListener("touchstart",e=>{
-  e.preventDefault();
 
   const t = e.touches[0];
   const x = t.clientX;
