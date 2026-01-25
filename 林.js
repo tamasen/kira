@@ -236,7 +236,7 @@ function update(){
   // 一騎当千 アイテム
   if(MODES[modeIndex]==="森（一騎当千）"){
     const now=performance.now();
-    if(now-lastItemTime>5000 && items.length<1){
+    if(now-lastItemTime>2000 && items.length<5){
       items.push({
         x:Math.random()*(screenWidth-SIZE),
         y:Math.random()*(screenHeight-SIZE)
