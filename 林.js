@@ -244,13 +244,13 @@ function updateEnemies(){
 // アイテム更新
 // =====================
 function updateItems(){
-  if(MODES[modeIndex]!=="森（一騎当千)")) return;
-  items.forEach((it,i)=>{
-    if(hit(player,it,player.size,ITEM_SIZE)){
+  if(MODES[modeIndex]!=="森（一騎当千）") return;
+  for(let i=items.length-1;i>=0;i--){
+    if(hit(player,items[i],player.size,ITEM_SIZE)){
       player.speed += 0.5;
       items.splice(i,1);
     }
-  });
+  }
 }
 
 // =====================
