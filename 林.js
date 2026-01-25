@@ -230,7 +230,7 @@ function updateEnemies(){
 
   // 四面楚歌：5秒ごとに増える
   if(mode==="森（四面楚歌）"){
-    if(surviveTime>0 && surviveTime%5===0 && enemies.length-1 < surviveTime/5){
+    if(surviveTime>0 && surviveTime%5===0 && enemies.length-1 < Math.floor(surviveTime/5)){
       enemies.push({
         x:Math.random()*(screenWidth-70),
         y:Math.random()*(screenHeight-70),
