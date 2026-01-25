@@ -83,12 +83,21 @@ canvas.addEventListener("touchstart",e=>{
   tx=e.touches[0].clientX;
   ty=e.touches[0].clientY;
 },{passive:false});
-canvas.addEventListener("touchmove",e=>{
+canvas.addEventListener("touchstart",e=>{
   e.preventDefault();
-  if(!touching)return;
-  tx=e.touches[0].clientX;
-  ty=e.touches[0].clientY;
+
+  const t = e.touches[0];
+  const x = t.clientX;
+  const y = t.clientY;
+
+  // ★ ボタン判定も実行
+  click(x, y);
+
+  touching = true;
+  tx = x;
+  ty = y;
 },{passive:false});
+
 canvas.addEventListener("touchend",()=>touching=false);
 
 // =========================
