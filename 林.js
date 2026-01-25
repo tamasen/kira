@@ -32,10 +32,10 @@ window.addEventListener("resize", resizeCanvas);
 // =====================
 const playerImg = new Image();
 const enemyImg = new Image();
-const bossImg = new Image();
+const bossImg  = new Image();
 playerImg.src = "player.png";
-enemyImg.src = "enemy.png";
-bossImg.src = "boss.png";
+enemyImg.src  = "enemy.png";
+bossImg.src   = "boss.png";
 
 // =====================
 // state / mode
@@ -70,8 +70,31 @@ const keys = {};
 let isTouching = false;
 let touchX = 0, touchY = 0;
 
+window.addEventListener("keydown", e=>keys[e.key]=true);
+window.addEventListener("keyup", e=>keys[e.key]=false);
+
 canvas.addEventListener("click", e=>{
   handleClick(e.clientX, e.clientY);
+});
+
+canvas.addEventListener("touchstart", e=>{
+  e.preventDefault();
+  const t = e.touches[0];
+  isTouching = true;
+  touchX = t.clientX;
+  touchY = t.clientY;
+},{passive:false});
+
+canvas.addEventListener("touchmove", e=>{
+  e.preventDefault();
+  if(!isTouching) return;
+  const t = e.touches[0];
+  touchX = t.clientX;
+  touchY = t.clientY;
+},{passive:false});
+
+canvas.addEventListener("touchend", ()=>{
+  isTouching = false;
 });
 
 // =====================
@@ -86,12 +109,12 @@ const hit = (a,b)=>(
 );
 
 // =====================
-// 四角ボタン定義
+// buttons（四角）
 // =====================
 const buttons = {
-  start:  {x:0,y:0,w:220,h:60},
-  mode:   {x:0,y:0,w:220,h:60},
-  name:   {x:0,y:0,w:220,h:60}
+  start:{x:0,y:0,w:220,h:60},
+  mode: {x:0,y:0,w:220,h:60},
+  name: {x:0,y:0,w:220,h:60}
 };
 
 function drawButton(btn,text){
@@ -104,26 +127,26 @@ function drawButton(btn,text){
   ctx.fillText(text,btn.x+btn.w/2,btn.y+38);
 }
 
-function isInside(btn,x,y){
+function inside(btn,x,y){
   return x>=btn.x && x<=btn.x+btn.w &&
          y>=btn.y && y<=btn.y+btn.h;
 }
 
 // =====================
-// click handler
+// click
 // =====================
 function handleClick(x,y){
   if(gameState===STATE.TITLE){
-    if(isInside(buttons.start,x,y)) startGame();
-    if(isInside(buttons.mode,x,y)) modeIndex=(modeIndex+1)%MODES.length;
-    if(isInside(buttons.name,x,y)) changeName();
+    if(inside(buttons.start,x,y)) startGame();
+    if(inside(buttons.mode,x,y)) modeIndex=(modeIndex+1)%MODES.length;
+    if(inside(buttons.name,x,y)) changeName();
   }else if(gameState===STATE.GAMEOVER){
     gameState=STATE.TITLE;
   }
 }
 
 // =====================
-// 名前変更（重複禁止）
+// name change（重複禁止）
 // =====================
 async function changeName(){
   const name = prompt("名前を入力");
@@ -133,7 +156,7 @@ async function changeName(){
     .where("name","==",name).get();
 
   if(!snap.empty && name!==playerName){
-    alert("その名前はすでに使われています");
+    alert("その名前は使われています");
     return;
   }
 
@@ -142,7 +165,7 @@ async function changeName(){
 }
 
 // =====================
-// start game
+// start
 // =====================
 function startGame(){
   gameState = STATE.PLAY;
@@ -153,10 +176,10 @@ function startGame(){
   level = 1;
   startTime = performance.now();
 
-  const mode = MODES[modeIndex];
-  if(mode==="林"){
+  const m = MODES[modeIndex];
+  if(m==="林"){
     enemies.push({x:100,y:100,speed:2,img:enemyImg});
-  }else if(mode==="森（四面楚歌）"){
+  }else if(m==="森（四面楚歌）"){
     enemies.push({x:100,y:100,speed:2.5,img:enemyImg});
   }else{
     player.speed = 6;
@@ -168,7 +191,29 @@ function startGame(){
 // =====================
 // update
 // =====================
+function updatePlayer(){
+  if(keys["ArrowUp"]||keys["w"]) player.y-=player.speed;
+  if(keys["ArrowDown"]||keys["s"]) player.y+=player.speed;
+  if(keys["ArrowLeft"]||keys["a"]) player.x-=player.speed;
+  if(keys["ArrowRight"]||keys["d"]) player.x+=player.speed;
+
+  if(isTouching){
+    const dx = touchX-(player.x+SIZE/2);
+    const dy = touchY-(player.y+SIZE/2);
+    const d = Math.hypot(dx,dy);
+    if(d>1){
+      player.x+=(dx/d)*player.speed;
+      player.y+=(dy/d)*player.speed;
+    }
+  }
+
+  player.x=clamp(player.x,0,screenWidth-SIZE);
+  player.y=clamp(player.y,0,screenHeight-SIZE);
+}
+
 function update(){
+  updatePlayer();
+
   surviveTime = Math.floor((performance.now()-startTime)/1000);
 
   if(MODES[modeIndex]==="林"){
@@ -193,12 +238,7 @@ function update(){
 // =====================
 async function gameOver(){
   gameState = STATE.GAMEOVER;
-
-  if(!playerName){
-    alert("名前を設定してください");
-    gameState = STATE.TITLE;
-    return;
-  }
+  if(!playerName) return;
 
   await db.collection("scores").add({
     name: playerName,
@@ -221,12 +261,9 @@ function draw(){
     ctx.textAlign="center";
     ctx.fillText("林を作らないゲーム",screenWidth/2,120);
 
-    buttons.start.x = screenWidth/2-110;
-    buttons.start.y = 180;
-    buttons.mode.x  = screenWidth/2-110;
-    buttons.mode.y  = 260;
-    buttons.name.x  = screenWidth/2-110;
-    buttons.name.y  = 340;
+    buttons.start.x=screenWidth/2-110; buttons.start.y=180;
+    buttons.mode.x =screenWidth/2-110; buttons.mode.y =260;
+    buttons.name.x =screenWidth/2-110; buttons.name.y =340;
 
     drawButton(buttons.start,"START");
     drawButton(buttons.mode,`MODE: ${MODES[modeIndex]}`);
