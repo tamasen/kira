@@ -226,7 +226,7 @@ function update(){
       enemies.push({
         x:Math.random()*(screenWidth-SIZE),
         y:Math.random()*(screenHeight-SIZE),
-        speed:2.0,
+        speed:player.speed * 0.9 ,
         img:enemyImg
       });
       lastEnemyAddTime=now;
