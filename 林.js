@@ -175,7 +175,6 @@ function startGame(){
   } else {
     player.speed = 1;
     enemies.push({x:100,y:100,speed:player.speed*1.2,img:bossImg,size:SIZE_BOSS});
-    spawnItem();
   }
 }
 
@@ -183,9 +182,7 @@ function startGame(){
 // アイテム生成
 // =====================
 function spawnItem(){
-  const mode = MODES[modeIndex];
-  if(mode!=="森（一騎当千）") return;
-
+  if(MODES[modeIndex]!=="森（一騎当千）") return;
   if(items.length>=5) return;
   const x = Math.random()*(screenWidth-ITEM_SIZE);
   const y = Math.random()*(screenHeight-ITEM_SIZE);
@@ -234,8 +231,11 @@ function updateEnemies(){
   // 四面楚歌：5秒ごとに増える
   if(mode==="森（四面楚歌）"){
     if(surviveTime>0 && surviveTime%5===0 && enemies.length-1 < surviveTime/5){
-      enemies.push({x:Math.random()*(screenWidth-70),y:Math.random()*(screenHeight-70),
-        speed:2.5,img:enemyImg,size:70});
+      enemies.push({
+        x:Math.random()*(screenWidth-70),
+        y:Math.random()*(screenHeight-70),
+        speed:2.5,img:enemyImg,size:70
+      });
     }
   }
 }
@@ -244,7 +244,7 @@ function updateEnemies(){
 // アイテム更新
 // =====================
 function updateItems(){
-  if(MODES[modeIndex]!=="森（一騎当千")) return;
+  if(MODES[modeIndex]!=="森（一騎当千)")) return;
   items.forEach((it,i)=>{
     if(hit(player,it,player.size,ITEM_SIZE)){
       player.speed += 0.5;
@@ -262,7 +262,6 @@ function update(){
   updateEnemies();
   updateItems();
 
-  // 林モードレベル
   if(MODES[modeIndex]==="林"){
     level = Math.floor(surviveTime/5)+1;
     enemies[0].speed = 2 + level*0.3;
