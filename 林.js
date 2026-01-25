@@ -2,7 +2,7 @@
 // Firebase
 // =====================
 const db = firebase.firestore();
-const DEVELOPER_NAME = "ショコラ";
+const DEVELOPER_NAME = "たません(開発者）";
 
 // =====================
 // canvas
