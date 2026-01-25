@@ -31,16 +31,13 @@
     projectId: "kira-2e78d",
     storageBucket: "kira-2e78d.firebasestorage.app",
     messagingSenderId: "510228775672",
-    appId: "1:510228775672:web:24a7c433a719a0e095310d",
-    measurementId: "G-EL522TTT72"
+    appId: "1:510228775672:web:24a7c433a719a0e095310d"
   };
 
   firebase.initializeApp(firebaseConfig);
-  window.db = firebase.firestore(); // ★ グローバルにする
+  window.db = firebase.firestore(); // ★ JSに渡す
 </script>
 
-<!-- ゲーム本体 -->
-<script src="林.js"></script>
-
+<script src="main.js"></script>
 </body>
 </html>
