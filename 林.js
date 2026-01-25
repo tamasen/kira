@@ -1,7 +1,7 @@
 // =====================
-// Firebase
+// Firebase（HTMLで初期化済み）
 // =====================
-// HTML側で window.db = firebase.firestore(); 済み前提
+const db = window.db;
 
 // =====================
 // canvas
@@ -30,14 +30,12 @@ window.addEventListener("resize", resizeCanvas);
 // images
 // =====================
 const playerImg = new Image();
-const enemyImg  = new Image();
-const bossImg   = new Image();
-const itemImg   = new Image();
+const enemyImg = new Image();
+const bossImg = new Image();
 
 playerImg.src = "player.png";
-enemyImg.src  = "enemy.png";
-bossImg.src   = "boss.png";
-itemImg.src   = "item_speed.png";
+enemyImg.src = "enemy.png";
+bossImg.src = "boss.png";
 
 // =====================
 // state & mode
@@ -54,15 +52,13 @@ let modeIndex = 0;
 const SIZE = 100;
 const player = { x:0, y:0, speed:4 };
 const enemies = [];
-const items = [];
 
 // =====================
-// score
+// score & ranking
 // =====================
 let startTime = 0;
 let surviveTime = 0;
 let level = 1;
-let lastSpawn = 0;
 
 let playerName = localStorage.getItem("playerName") || "";
 let ranking = [];
@@ -74,36 +70,34 @@ const keys = {};
 let isTouching = false;
 let touchX = 0, touchY = 0;
 
-window.addEventListener("keydown", e=>{
+window.addEventListener("keydown", e => {
   keys[e.key] = true;
   if (e.key === "Enter" && gameState === STATE.TITLE) startGame();
 });
-window.addEventListener("keyup", e=> keys[e.key] = false);
+window.addEventListener("keyup", e => keys[e.key] = false);
 
-canvas.addEventListener("click", e=>{
-  handlePointer(e.clientX, e.clientY);
+canvas.addEventListener("click", () => {
+  if (gameState === STATE.TITLE) startGame();
+  else if (gameState === STATE.GAMEOVER) gameState = STATE.TITLE;
 });
 
-canvas.addEventListener("touchstart", e=>{
+canvas.addEventListener("touchstart", e => {
   e.preventDefault();
   const t = e.touches[0];
-  handlePointer(t.clientX, t.clientY);
-  if (gameState === STATE.PLAY) {
-    isTouching = true;
-    touchX = t.clientX;
-    touchY = t.clientY;
-  }
+  isTouching = true;
+  touchX = t.clientX;
+  touchY = t.clientY;
+  if (gameState === STATE.TITLE) startGame();
 },{passive:false});
 
-canvas.addEventListener("touchmove", e=>{
+canvas.addEventListener("touchmove", e => {
   e.preventDefault();
-  if (!isTouching) return;
   const t = e.touches[0];
   touchX = t.clientX;
   touchY = t.clientY;
 },{passive:false});
 
-canvas.addEventListener("touchend", ()=> isTouching = false);
+canvas.addEventListener("touchend", () => isTouching = false,{passive:false});
 
 // =====================
 // utils
@@ -117,20 +111,11 @@ const hit = (a,b)=>(
 );
 
 // =====================
-// pointer
-// =====================
-function handlePointer(){
-  if (gameState === STATE.TITLE) startGame();
-  else if (gameState === STATE.GAMEOVER) gameState = STATE.TITLE;
-}
-
-// =====================
 // start game
 // =====================
 function startGame(){
   gameState = STATE.PLAY;
   enemies.length = 0;
-  items.length = 0;
 
   player.x = screenWidth/2 - SIZE/2;
   player.y = screenHeight/2 - SIZE/2;
@@ -138,16 +123,15 @@ function startGame(){
 
   level = 1;
   startTime = performance.now();
-  lastSpawn = performance.now();
 
-  const mode = MODE[modeIndex];
-  if (mode === "林") {
+  if (MODE[modeIndex] === "林") {
     enemies.push({ x:100, y:100, size:SIZE, img:enemyImg, speed:1.8 });
-  } else if (mode === "森（四面楚歌）") {
-    enemies.push({ x:screenWidth-120, y:120, size:SIZE, img:enemyImg, speed:2.2 });
-  } else {
+  } 
+  else if (MODE[modeIndex] === "森（四面楚歌）") {
+    enemies.push({ x:screenWidth-120, y:120, size:SIZE, img:enemyImg, speed:2.4 });
+  } 
+  else {
     player.speed = 6;
-    level = 7;
     enemies.push({ x:100, y:100, size:SIZE, img:bossImg, speed:player.speed*1.2 });
   }
 }
@@ -164,10 +148,10 @@ function updatePlayer(){
   if (isTouching) {
     const dx = touchX - (player.x + SIZE/2);
     const dy = touchY - (player.y + SIZE/2);
-    const d = Math.hypot(dx,dy);
+    const d = Math.hypot(dx, dy);
     if (d > 1) {
-      player.x += (dx/d)*player.speed;
-      player.y += (dy/d)*player.speed;
+      player.x += dx/d * player.speed;
+      player.y += dy/d * player.speed;
     }
   }
 
@@ -179,11 +163,9 @@ function updateEnemies(){
   enemies.forEach(e=>{
     const dx = player.x - e.x;
     const dy = player.y - e.y;
-    const d = Math.hypot(dx,dy);
-    let spd = e.speed;
-    if (MODE[modeIndex] === "森（一騎当千）") spd = player.speed * 1.2;
-    e.x += (dx/d)*spd;
-    e.y += (dy/d)*spd;
+    const d = Math.hypot(dx, dy);
+    e.x += dx/d * e.speed;
+    e.y += dy/d * e.speed;
     if (hit(player,e)) gameOver();
   });
 }
@@ -226,25 +208,23 @@ async function gameOver(){
 // =====================
 function draw(){
   ctx.clearRect(0,0,screenWidth,screenHeight);
+  ctx.fillStyle="#000";
 
   if (gameState === STATE.PLAY) {
     ctx.drawImage(playerImg, player.x, player.y, SIZE, SIZE);
     enemies.forEach(e=>ctx.drawImage(e.img,e.x,e.y,e.size,e.size));
-    ctx.fillStyle="#000";
-    ctx.font="20px sans-serif";
-    ctx.fillText(`Time: ${surviveTime}s`,20,30);
-    ctx.fillText(`Level: ${level}`,20,60);
+    ctx.fillText(`Time ${surviveTime}s`,20,30);
+    ctx.fillText(`Level ${level}`,20,60);
   }
 
   if (gameState === STATE.GAMEOVER) {
     ctx.textAlign="center";
-    ctx.font="36px sans-serif";
     ctx.fillText("GAME OVER",screenWidth/2,160);
-    ctx.font="20px sans-serif";
     ranking.forEach((r,i)=>{
       ctx.fillText(`${i+1}. ${r.name} : ${r.score}s`,screenWidth/2,220+i*30);
     });
     ctx.fillText("タップでタイトルへ",screenWidth/2,420);
+    ctx.textAlign="left";
   }
 }
 
@@ -252,7 +232,7 @@ function draw(){
 // loop
 // =====================
 function loop(){
-  if (gameState === STATE.PLAY) {
+  if (gameState === STATE.PLAY){
     updatePlayer();
     updateLogic();
     updateEnemies();
