@@ -1,162 +1,262 @@
+// =====================
+// Firebase
+// =====================
 const db = firebase.firestore();
+const DEVELOPER_NAME = "ショコラ";
 
+// =====================
+// canvas
+// =====================
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-function resize(){
-  canvas.width = innerWidth;
-  canvas.height = innerHeight;
+// =====================
+// resize
+// =====================
+let screenWidth, screenHeight;
+function resizeCanvas(){
+  const dpr = window.devicePixelRatio || 1;
+  screenWidth = window.innerWidth;
+  screenHeight = window.innerHeight;
+  canvas.width = screenWidth * dpr;
+  canvas.height = screenHeight * dpr;
+  canvas.style.width = screenWidth + "px";
+  canvas.style.height = screenHeight + "px";
+  ctx.setTransform(dpr,0,0,dpr,0,0);
 }
-resize();
-addEventListener("resize", resize);
+resizeCanvas();
+window.addEventListener("resize", resizeCanvas);
 
+// =====================
+// images
+// =====================
+const playerImg = new Image();
+const enemyImg = new Image();
+const bossImg = new Image();
+playerImg.src = "player.png";
+enemyImg.src = "enemy.png";
+bossImg.src = "boss.png";
+
+// =====================
+// state / mode
+// =====================
 const STATE = { TITLE:0, PLAY:1, GAMEOVER:2 };
 let gameState = STATE.TITLE;
 
-const MODE = ["林","森（四面楚歌）","森（一騎当千）"];
+const MODES = ["林","森（四面楚歌）","森（一騎当千）"];
 let modeIndex = 0;
 
+// =====================
+// objects
+// =====================
 const SIZE = 80;
 const player = { x:0, y:0, speed:4 };
-const enemies = [];
+let enemies = [];
 
+// =====================
+// score
+// =====================
 let startTime = 0;
 let surviveTime = 0;
 let level = 1;
+let ranking = [];
 
 let playerName = localStorage.getItem("playerName") || "";
 
+// =====================
+// input
+// =====================
 const keys = {};
-let touching = false;
-let tx = 0, ty = 0;
+let isTouching = false;
+let touchX = 0, touchY = 0;
 
-addEventListener("keydown",e=>keys[e.key]=true);
-addEventListener("keyup",e=>keys[e.key]=false);
+canvas.addEventListener("click", e=>{
+  handleClick(e.clientX, e.clientY);
+});
 
-canvas.addEventListener("click",e=>pointer(e.clientX,e.clientY));
-canvas.addEventListener("touchstart",e=>{
-  e.preventDefault();
-  touching=true;
-  tx=e.touches[0].clientX;
-  ty=e.touches[0].clientY;
-  pointer(tx,ty);
-},{passive:false});
-canvas.addEventListener("touchmove",e=>{
-  e.preventDefault();
-  tx=e.touches[0].clientX;
-  ty=e.touches[0].clientY;
-},{passive:false});
-canvas.addEventListener("touchend",()=>touching=false);
+// =====================
+// utils
+// =====================
+const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
+const hit = (a,b)=>(
+  a.x < b.x + SIZE &&
+  a.x + SIZE > b.x &&
+  a.y < b.y + SIZE &&
+  a.y + SIZE > b.y
+);
 
-function pointer(x,y){
+// =====================
+// 四角ボタン定義
+// =====================
+const buttons = {
+  start:  {x:0,y:0,w:220,h:60},
+  mode:   {x:0,y:0,w:220,h:60},
+  name:   {x:0,y:0,w:220,h:60}
+};
+
+function drawButton(btn,text){
+  ctx.fillStyle="#fff";
+  ctx.fillRect(btn.x,btn.y,btn.w,btn.h);
+  ctx.strokeStyle="#000";
+  ctx.strokeRect(btn.x,btn.y,btn.w,btn.h);
+  ctx.fillStyle="#000";
+  ctx.textAlign="center";
+  ctx.fillText(text,btn.x+btn.w/2,btn.y+38);
+}
+
+function isInside(btn,x,y){
+  return x>=btn.x && x<=btn.x+btn.w &&
+         y>=btn.y && y<=btn.y+btn.h;
+}
+
+// =====================
+// click handler
+// =====================
+function handleClick(x,y){
   if(gameState===STATE.TITLE){
-    if(y>350&&y<420){ changeName(); return; }
-    if(y>250&&y<310){ modeIndex=(modeIndex+1)%3; return; }
-    if(y>180&&y<230){ startGame(); }
+    if(isInside(buttons.start,x,y)) startGame();
+    if(isInside(buttons.mode,x,y)) modeIndex=(modeIndex+1)%MODES.length;
+    if(isInside(buttons.name,x,y)) changeName();
   }else if(gameState===STATE.GAMEOVER){
     gameState=STATE.TITLE;
   }
 }
 
-function changeName(){
-  let n = prompt("名前を入力",playerName);
-  if(!n)return;
-  playerName=n;
+// =====================
+// 名前変更（重複禁止）
+// =====================
+async function changeName(){
+  const name = prompt("名前を入力");
+  if(!name) return;
+
+  const snap = await db.collection("scores")
+    .where("name","==",name).get();
+
+  if(!snap.empty && name!==playerName){
+    alert("その名前はすでに使われています");
+    return;
+  }
+
+  playerName = name;
   localStorage.setItem("playerName",playerName);
 }
 
+// =====================
+// start game
+// =====================
 function startGame(){
-  gameState=STATE.PLAY;
-  enemies.length=0;
-  player.x=canvas.width/2;
-  player.y=canvas.height/2;
-  player.speed=4;
-  level=1;
-  startTime=performance.now();
+  gameState = STATE.PLAY;
+  enemies = [];
+  player.x = screenWidth/2 - SIZE/2;
+  player.y = screenHeight/2 - SIZE/2;
+  player.speed = 4;
+  level = 1;
+  startTime = performance.now();
 
-  if(MODE[modeIndex]==="林"){
-    enemies.push({x:100,y:100,speed:2});
-  }else if(MODE[modeIndex]==="森（四面楚歌）"){
-    enemies.push({x:100,y:100,speed:2});
+  const mode = MODES[modeIndex];
+  if(mode==="林"){
+    enemies.push({x:100,y:100,speed:2,img:enemyImg});
+  }else if(mode==="森（四面楚歌）"){
+    enemies.push({x:100,y:100,speed:2.5,img:enemyImg});
   }else{
-    player.speed=6;
-    level=7;
-    enemies.push({x:100,y:100,speed:player.speed*1.2});
+    player.speed = 6;
+    level = 7;
+    enemies.push({x:100,y:100,speed:player.speed*1.2,img:bossImg});
   }
 }
 
+// =====================
+// update
+// =====================
 function update(){
-  if(keys.ArrowUp)player.y-=player.speed;
-  if(keys.ArrowDown)player.y+=player.speed;
-  if(keys.ArrowLeft)player.x-=player.speed;
-  if(keys.ArrowRight)player.x+=player.speed;
+  surviveTime = Math.floor((performance.now()-startTime)/1000);
 
-  if(touching){
-    const dx=tx-player.x;
-    const dy=ty-player.y;
-    const d=Math.hypot(dx,dy);
-    if(d>1){
-      player.x+=dx/d*player.speed;
-      player.y+=dy/d*player.speed;
-    }
+  if(MODES[modeIndex]==="林"){
+    level = Math.floor(surviveTime/5)+1;
+    enemies[0].speed = 2 + level*0.3;
   }
 
   enemies.forEach(e=>{
-    const dx=player.x-e.x;
-    const dy=player.y-e.y;
-    const d=Math.hypot(dx,dy);
-    let s=e.speed;
-    if(MODE[modeIndex]==="森（一騎当千）") s=player.speed*1.2;
-    e.x+=dx/d*s;
-    e.y+=dy/d*s;
-    if(d<SIZE) gameOver();
+    const dx = player.x-e.x;
+    const dy = player.y-e.y;
+    const d = Math.hypot(dx,dy);
+    const spd = MODES[modeIndex]==="森（一騎当千）"
+      ? player.speed*1.2 : e.speed;
+    e.x+=(dx/d)*spd;
+    e.y+=(dy/d)*spd;
+    if(hit(player,e)) gameOver();
   });
-
-  surviveTime=Math.floor((performance.now()-startTime)/1000);
-  if(MODE[modeIndex]==="林"){
-    level=Math.floor(surviveTime/5)+1;
-    enemies[0].speed=2+level*0.3;
-  }
 }
 
+// =====================
+// game over
+// =====================
 async function gameOver(){
-  gameState=STATE.GAMEOVER;
+  gameState = STATE.GAMEOVER;
+
+  if(!playerName){
+    alert("名前を設定してください");
+    gameState = STATE.TITLE;
+    return;
+  }
+
   await db.collection("scores").add({
-    name:playerName||"NO NAME",
-    score:surviveTime
+    name: playerName,
+    score: surviveTime
   });
+
+  const snap = await db.collection("scores")
+    .orderBy("score","desc").limit(5).get();
+  ranking = snap.docs.map(d=>d.data());
 }
 
+// =====================
+// draw
+// =====================
 function draw(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.textAlign="center";
+  ctx.clearRect(0,0,screenWidth,screenHeight);
+  ctx.font="20px sans-serif";
 
   if(gameState===STATE.TITLE){
-    ctx.font="30px sans-serif";
-    ctx.fillText("林を作らないゲーム",canvas.width/2,120);
+    ctx.textAlign="center";
+    ctx.fillText("林を作らないゲーム",screenWidth/2,120);
 
-    ctx.font="20px sans-serif";
-    ctx.fillText("START",canvas.width/2,210);
-    ctx.fillText("MODE : "+MODE[modeIndex],canvas.width/2,280);
-    ctx.fillText("名前："+(playerName||"未設定"),canvas.width/2,380);
-    ctx.fillText("（タップして変更）",canvas.width/2,410);
+    buttons.start.x = screenWidth/2-110;
+    buttons.start.y = 180;
+    buttons.mode.x  = screenWidth/2-110;
+    buttons.mode.y  = 260;
+    buttons.name.x  = screenWidth/2-110;
+    buttons.name.y  = 340;
+
+    drawButton(buttons.start,"START");
+    drawButton(buttons.mode,`MODE: ${MODES[modeIndex]}`);
+    drawButton(buttons.name,`NAME: ${playerName||"未設定"}`);
   }
 
   if(gameState===STATE.PLAY){
-    ctx.fillRect(player.x-SIZE/2,player.y-SIZE/2,SIZE,SIZE);
-    enemies.forEach(e=>{
-      ctx.fillRect(e.x-SIZE/2,e.y-SIZE/2,SIZE,SIZE);
-    });
-    ctx.fillText(`Time ${surviveTime}`,80,30);
-    ctx.fillText(`Lv ${level}`,80,60);
+    ctx.drawImage(playerImg,player.x,player.y,SIZE,SIZE);
+    enemies.forEach(e=>ctx.drawImage(e.img,e.x,e.y,SIZE,SIZE));
+    ctx.fillText(`Time ${surviveTime}s`,20,30);
+    ctx.fillText(`Level ${level}`,20,60);
   }
 
   if(gameState===STATE.GAMEOVER){
-    ctx.fillText("GAME OVER",canvas.width/2,200);
-    ctx.fillText("タップでタイトルへ",canvas.width/2,260);
+    ctx.textAlign="center";
+    ctx.fillText("GAME OVER",screenWidth/2,120);
+    ranking.forEach((r,i)=>{
+      ctx.fillStyle = r.name===DEVELOPER_NAME?"red":"black";
+      const tag = r.name===DEVELOPER_NAME?" (開発者)":"";
+      ctx.fillText(`${i+1}. ${r.name}${tag} : ${r.score}s`,
+        screenWidth/2,200+i*30);
+    });
+    ctx.fillStyle="#000";
+    ctx.fillText("タップで戻る",screenWidth/2,420);
   }
 }
 
+// =====================
+// loop
+// =====================
 function loop(){
   if(gameState===STATE.PLAY) update();
   draw();
